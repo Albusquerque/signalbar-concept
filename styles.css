@@ -9,5 +9,20 @@
 @media(max-width:1120px){.workbench{grid-template-columns:minmax(400px,1fr) minmax(380px,1fr)}.machine-scene{height:350px}.steam-machine{width:min(70%,300px)}.cube-face{height:205px}.pane{padding:18px}.tab{padding:8px 7px}}
 @media(max-width:850px){.hero{grid-template-columns:1fr;padding-top:42px;gap:15px}.hero-art{min-height:270px}.hero-cube{width:275px}.hero-cube-face{height:190px}.intro-strip{gap:18px}.workbench{display:flex;flex-direction:column}.settings-shell,.stage-shell{width:100%}.stage-shell{position:static;order:-1}.settings-content{max-height:none;min-height:0}.machine-scene{height:350px}.section-heading{align-items:start;flex-direction:column;gap:10px}.lab-section{padding-top:48px}.mobile-preview{display:none;position:fixed;z-index:20;bottom:0;left:0;right:0;padding:9px 15px 12px;background:#101f29f5;border-top:1px solid #5a7d85;box-shadow:0 -8px 30px #0008;backdrop-filter:blur(12px)}.mobile-preview.visible{display:block}.mobile-preview>div:first-child{display:flex;justify-content:space-between;gap:10px;margin-bottom:7px;font-size:11px}.mobile-preview a{font-size:10px;color:#a9eae3;text-decoration:none}.mobile-leds{display:grid;grid-template-columns:repeat(17,minmax(0,1fr));gap:2px}.mobile-leds i{display:block;height:7px;border-radius:1px;background:#33454e}footer{padding-bottom:105px}}
 @media(max-width:560px){.site-header{padding:0 17px}.brand{font-size:16px}.brand em{display:none}.header-links{gap:10px}.header-links>a:first-child{display:none}.header-links .header-download{font-size:11px;padding:9px}.hero{padding:34px 19px 43px}.hero h1{font-size:43px}.hero-lead{font-size:15px}.hero-art{min-height:250px}.hero-cube{width:260px}.intro-strip{justify-content:start}.intro-strip strong{font-size:11px}.lab-section{padding:42px 12px 70px}.section-heading{padding:0 7px}.pane{padding:17px}.scene-grid{gap:7px}.scene-card{min-height:113px;padding:10px}.form-grid{grid-template-columns:1fr;gap:4px}.segmented button{font-size:11px}.tab-list{display:flex;flex-wrap:nowrap}.stage-top{height:61px}.machine-scene{height:310px;padding-bottom:48px}.steam-machine{width:min(69%,270px)}.cube-face{height:178px}.machine-front{height:43px}.scene-shelf{height:65px}.logical-leds{gap:2px}.logical-leds i{height:18px}.logical-head{align-items:start;flex-direction:column}.logical-head>span{text-align:left}.pane-head h3{font-size:25px}footer{padding:30px 20px;flex-direction:column}footer>div:last-child{flex-wrap:wrap}}
+
+/* Front-on silhouette: Valve specifies 156 mm wide by 152 mm tall.
+   The three visible bands share that fixed overall aspect ratio at every viewport. */
+.hero-cube,.steam-machine{aspect-ratio:156/152;display:flex;flex-direction:column}
+.hero-cube{transform:none}
+.hero-cube-face,.cube-face{height:auto;flex:0 0 82.9%}
+.hero-led,.led-seam{height:auto;flex:0 0 1.3%}
+.hero-base,.machine-front{height:auto;flex:0 0 15.8%}
+.machine-measure{position:absolute;z-index:3;right:16px;top:15px;font-size:9px;letter-spacing:.09em;font-weight:800;color:#293a3e;text-decoration:none;background:#f2e4d3b8;border:1px solid #ffffff77;border-radius:3px;padding:6px 8px}
+.machine-measure:hover{background:#fff1df}
+.hero-art{min-height:365px}
+.machine-scene{height:430px}
+@media(max-width:1120px){.machine-scene{height:390px}}
+@media(max-width:850px){.hero-art{min-height:315px}.machine-scene{height:390px}}
+@media(max-width:560px){.hero-art{min-height:275px}.machine-scene{height:355px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.button,.scene-card,.logical-leds i{transition:none}}
 @media(min-width:561px){.tab-list{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}.tab{justify-content:center}}

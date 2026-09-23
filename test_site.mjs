@@ -10,6 +10,10 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(url, { waitUntil: "networkidle" });
+  for (const selector of [".hero-cube", ".steam-machine"]) {
+    const ratio = await page.locator(selector).evaluate((element) => element.offsetWidth / element.offsetHeight);
+    assert.ok(Math.abs(ratio - 156 / 152) < 0.015, `${selector} front ratio: ${ratio}`);
+  }
   await page.locator("#artImage").evaluate((image) => image.decode());
   await page.screenshot({ path: "/tmp/signalbar-concept-desktop.png", fullPage: true });
   assert.equal(await page.locator("#logicalLeds i").count(), 17);
@@ -85,6 +89,8 @@ try {
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
   mobile.on("pageerror", (error) => errors.push(error.message));
   await mobile.goto(url, { waitUntil: "networkidle" });
+  const mobileMachineRatio = await mobile.locator(".steam-machine").evaluate((element) => element.offsetWidth / element.offsetHeight);
+  assert.ok(Math.abs(mobileMachineRatio - 156 / 152) < 0.015, `mobile machine front ratio: ${mobileMachineRatio}`);
   await mobile.screenshot({ path: "/tmp/signalbar-concept-mobile.png", fullPage: true });
   for (const tab of ["artwork", "performance", "playtime", "events", "controllers", "priorities"]) {
     await mobile.locator(`[data-tab="${tab}"]`).click();
