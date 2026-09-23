@@ -64,6 +64,21 @@ try {
     for (const variant of variants) await page.locator("#controllerVariant").selectOption(variant);
   }
 
+  await page.locator('[data-tab="weather"]').click();
+  await page.waitForFunction(() => document.querySelector("#providerBadge")?.textContent === "WEATHER");
+  await page.waitForFunction(() => [...document.querySelectorAll("#logicalLeds i")].some((led) => led.style.background !== "rgb(51, 69, 78)"));
+  assert.equal(await page.locator("#weatherVariant option").count(), 2);
+  for (const condition of ["clear_day", "clear_night", "rain", "cloud", "breaks", "breaks_night", "snow", "storm"]) {
+    await page.locator("#weatherCondition").selectOption(condition);
+    assert.equal(await page.locator("#weatherVariant option").count(), 2);
+    await page.locator("#weatherVariant").selectOption("1");
+    assert.equal(await page.locator("#providerBadge").textContent(), "WEATHER");
+  }
+  await page.locator("#weatherUnit").selectOption("fahrenheit");
+  await page.locator("#weatherTopbar").check();
+  assert.match(await page.locator("#weatherTopbarSample").textContent(), /64°F/);
+  await page.locator(".workbench").screenshot({ path: "/tmp/signalbar-concept-weather.png" });
+
   await page.locator('[data-tab="events"]').click();
   await page.locator('[data-event-kind="achievement"]').click();
   await page.waitForFunction(() => document.querySelector("#providerBadge")?.textContent === "LIGHT EVENT");
@@ -92,7 +107,7 @@ try {
   const mobileMachineRatio = await mobile.locator(".steam-machine").evaluate((element) => element.offsetWidth / element.offsetHeight);
   assert.ok(Math.abs(mobileMachineRatio - 156 / 152) < 0.015, `mobile machine front ratio: ${mobileMachineRatio}`);
   await mobile.screenshot({ path: "/tmp/signalbar-concept-mobile.png", fullPage: true });
-  for (const tab of ["artwork", "performance", "playtime", "events", "controllers", "priorities"]) {
+  for (const tab of ["artwork", "performance", "playtime", "events", "controllers", "weather", "priorities"]) {
     await mobile.locator(`[data-tab="${tab}"]`).click();
     const width = await mobile.evaluate(() => document.documentElement.scrollWidth - innerWidth);
     assert.ok(width <= 1, `${tab} horizontal overflow: ${width}px`);

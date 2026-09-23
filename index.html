@@ -26,7 +26,7 @@
       <div class="hero-copy">
         <p class="eyebrow"><span class="eyebrow-dot"></span> INTERACTIVE PRODUCT PREVIEW</p>
         <h1 id="hero-title">What could your <span>light bar</span> tell you?</h1>
-        <p class="hero-lead">Try SignalBar's Artwork, Performance, Playtime, Steam moments and controller battery signals before installing anything. Change the numbers. Trigger an event. Watch the same 17 LEDs respond.</p>
+        <p class="hero-lead">Try SignalBar's Artwork, Performance, Playtime, Steam moments, controller battery and Weather signals before installing anything. Change the numbers. Trigger an event. Watch the same 17 LEDs respond.</p>
         <div class="hero-actions"><a class="button primary" href="#lab">Open the simulator <span aria-hidden="true">↘</span></a><a class="button ghost" href="https://github.com/Albusquerque/SignalBar#readme" target="_blank" rel="noopener noreferrer">Read the project ↗</a></div>
         <p class="hero-note">Visual simulation only. It does not connect to your Steam account or control hardware.</p>
       </div>
@@ -34,7 +34,7 @@
     </section>
 
     <section class="intro-strip" aria-label="Available simulations">
-      <span>PLAY WITH</span><strong>Artwork</strong><strong>CPU + GPU</strong><strong>Countdowns</strong><strong>Light events</strong><strong>Controllers</strong>
+      <span>PLAY WITH</span><strong>Artwork</strong><strong>CPU + GPU</strong><strong>Countdowns</strong><strong>Light events</strong><strong>Controllers</strong><strong>Weather</strong>
     </section>
 
     <section class="lab-section" id="lab" aria-labelledby="lab-title">
@@ -49,6 +49,7 @@
             <button class="tab" data-tab="playtime" aria-selected="false"><span>◴</span> Playtime</button>
             <button class="tab" data-tab="events" aria-selected="false"><span>✧</span> Light events</button>
             <button class="tab" data-tab="controllers" aria-selected="false"><span>⌁</span> Controllers</button>
+            <button class="tab" data-tab="weather" aria-selected="false"><span>☀</span> Weather</button>
             <button class="tab" data-tab="priorities" aria-selected="false"><span>≡</span> Priorities</button>
           </nav>
 
@@ -60,6 +61,7 @@
                 <button class="scene-card" data-preset="performance"><span class="scene-icon cyan">◫</span><strong>CPU + GPU</strong><small>Two temperature-aware meters</small><span class="scene-arrow">↗</span></button>
                 <button class="scene-card" data-preset="playtime"><span class="scene-icon amber">◴</span><strong>Time remaining</strong><small>Steam Families or your own timer</small><span class="scene-arrow">↗</span></button>
                 <button class="scene-card" data-preset="controllers"><span class="scene-icon green">⌁</span><strong>Two controllers</strong><small>Mirrored battery gauges</small><span class="scene-arrow">↗</span></button>
+                <button class="scene-card" data-preset="weather"><span class="scene-icon amber">☀</span><strong>Local weather</strong><small>Sixteen loops for eight sky conditions</small><span class="scene-arrow">↗</span></button>
                 <button class="scene-card" data-preset="notification"><span class="scene-icon blue">✧</span><strong>Notification</strong><small>A short signal, then back to normal</small><span class="scene-arrow">↗</span></button>
                 <button class="scene-card" data-preset="achievement"><span class="scene-icon gold">✦</span><strong>Achievement</strong><small>Give a win its own celebration</small><span class="scene-arrow">↗</span></button>
               </div>
@@ -123,15 +125,27 @@
               <p class="field-help">Preview plays manually in either context. Automatic alert placement follows your Home/in-game choice. Real battery data depends on what Steam reports for each controller. <a href="https://albusquerque.github.io/signalbar-controller-battery/" target="_blank" rel="noopener noreferrer">Dedicated controller mockup ↗</a></p>
             </section>
 
+            <section class="pane" data-pane="weather" aria-labelledby="weather-heading">
+              <div class="pane-head"><p class="eyebrow">LOCAL WEATHER</p><h3 id="weather-heading">A window into the sky.</h3><p>Try the sixteen LED loops for eight conditions. This sample is offline: the plugin asks you to choose a city before it requests live weather.</p></div>
+              <div class="form-grid"><label class="field">Sky condition<select id="weatherCondition"><option value="clear_day">Clear sky · sun</option><option value="clear_night">Clear sky · moon and stars</option><option value="rain">Rain</option><option value="cloud">Cloud</option><option value="breaks">Partly cloudy · day</option><option value="breaks_night">Partly cloudy · night</option><option value="snow">Snow</option><option value="storm">Thunderstorm</option></select></label><label class="field">Animation<select id="weatherVariant"></select></label></div>
+              <div class="form-grid"><label class="field">Permanent weather display<select id="weatherWhere"><option value="off">Off</option><option value="home" selected>On Home</option><option value="game">In game</option><option value="everywhere">Everywhere</option></select></label><label class="field">Top-bar temperature<select id="weatherUnit"><option value="celsius">Celsius · °C</option><option value="fahrenheit">Fahrenheit · °F</option></select></label></div>
+              <label class="toggle-line"><input type="checkbox" id="weatherTopbar"><span><strong>Experimental SteamOS top-bar weather</strong><small>Independent of the LED scene. A weather icon and temperature appear near the clock when a live reading is available.</small></span></label>
+              <p class="field-help" id="weatherTopbarSample">Top-bar example: ☀ 18°C · shown next to the clock. The real plugin needs a chosen city; this demo uses sample data only.</p>
+              <label class="slider-field" for="weatherBrightness"><span>Weather brightness <output id="weatherBrightnessValue">70%</output></span><input id="weatherBrightness" type="range" min="10" max="100" value="70"></label>
+              <label class="slider-field" for="weatherCutoff"><span>Turn faint LEDs off <output id="weatherCutoffValue">0</output></span><input id="weatherCutoff" type="range" min="0" max="60" value="0"></label>
+              <div class="button-row"><button class="button primary" id="weatherReplay">Replay weather loop</button></div>
+              <p class="field-help">Weather and the permanent controller gauge are alternatives. Countdowns and brief alerts still take priority. Snow takes hold is the shipped snow default. The plugin refreshes live conditions about every fifteen minutes using Open-Meteo; this page makes no weather request.</p>
+            </section>
+
             <section class="pane" data-pane="priorities" aria-labelledby="priorities-heading">
               <div class="pane-head"><p class="eyebrow">HOW IT COEXISTS</p><h3 id="priorities-heading">One bar, clear priorities.</h3><p>Signals do not all play at once. The most important active message takes the bar, then the underlying display comes back.</p></div>
-              <ol class="priority-list"><li><b>Disabled</b><span>SignalBar stops and returns control to Steam.</span></li><li><b>Steam takes control</b><span>SignalBar yields to a new native LED write.</span></li><li><b>Critical countdown</b><span>The final five minutes protect the timer from light events.</span></li><li><b>Short alerts</b><span>Notifications, achievements, captures and controller warnings appear briefly.</span></li><li><b>Active countdown</b><span>Steam Families or your personal timer replaces the base display.</span></li><li><b>Controller gauge</b><span>Optional on Home or everywhere.</span></li><li><b>Artwork or Performance</b><span>Your everyday display, when nothing higher is active.</span></li></ol>
+              <ol class="priority-list"><li><b>Disabled</b><span>SignalBar stops and returns control to Steam.</span></li><li><b>Steam takes control</b><span>SignalBar yields to a new native LED write.</span></li><li><b>Critical countdown</b><span>The final five minutes protect the timer from light events.</span></li><li><b>Short alerts</b><span>Notifications, achievements, captures and controller warnings appear briefly.</span></li><li><b>Active countdown</b><span>Steam Families or your personal timer replaces the base display.</span></li><li><b>Controller gauge or Weather</b><span>Choose one permanent signal for Home, in game or everywhere.</span></li><li><b>Artwork or Performance</b><span>Your everyday display, when nothing higher is active.</span></li></ol>
               <div class="form-grid"><label class="field">Context<select id="contextChoice"><option value="game">In game</option><option value="home">Steam Home</option></select></label><label class="field">Base display<select id="displayChoice"><option value="artwork">Artwork</option><option value="performance" selected>Performance</option><option value="disabled">Disabled</option></select></label></div>
               <label class="slider-field" for="extraDark"><span>Extra dark physical LEDs <output id="extraDarkValue">2</output></span><input id="extraDark" type="range" min="0" max="5" value="2"></label>
               <label class="toggle-line"><input type="checkbox" id="reversePhysical" checked><span><strong>Reverse physical LED order</strong><small>Matches the Steam Machine's hardware mapping; logical preview stays left to right.</small></span></label>
               <div class="button-row"><button class="button ghost" id="priorityDemo">Set timer to 4 min</button><button class="button ghost" id="priorityNotify">Send a notification</button><button class="button ghost" id="resetDemo">Reset simulator</button></div>
               <p class="priority-feedback" id="priorityFeedback" role="status">Set the timer to four minutes, then send a notification to see the priority rule.</p>
-              <p class="field-help">Extra dark LEDs affect Countdown and Performance hardware output only, not the logical preview. No hardware access occurs on this site.</p>
+              <p class="field-help">Extra dark LEDs affect Countdown and Performance hardware output only, not the logical preview. In the real plugin, Advanced / debug also offers confirmed JSON import and Reset to defaults. No hardware access occurs on this site.</p>
             </section>
           </div>
         </div>

@@ -59,6 +59,17 @@ const CONTROLLER_OPTIONS = {
   low: [["beacon", "Last ember"], ["drain", "Signal flare"], ["heartbeat", "Afterglow"]],
   charging: [["current", "Photon current"], ["breath", "Tidal fill"], ["spark", "Spark lattice"]],
 };
+const WEATHER_OPTIONS = {
+  clear_day: ["Sun glints", "Solar bloom"],
+  clear_night: ["Quiet constellation", "Silver hush"],
+  rain: ["Bluewater", "Pearl rain"],
+  cloud: ["Passing shadow", "Passing shadows"],
+  breaks: ["Sun through clouds", "Sun, fading clouds"],
+  breaks_night: ["Moon through clouds", "Moon, fading clouds"],
+  snow: ["Melting snowfall", "Snow takes hold"],
+  storm: ["Pulse and echoes", "Storm break"],
+};
+const WEATHER_ICONS = { clear_day: "☀", clear_night: "☾", rain: "☂", cloud: "☁", breaks: "⛅", breaks_night: "☾", snow: "❄", storm: "⚡" };
 
 function defaultState() {
   return {
@@ -79,11 +90,14 @@ function defaultState() {
     padCount: 2, padOne: 96, padTwo: 41, padCharging: false, controllerWhere: "home", chargeMode: "continuous-home", alertWhere: "both", lowThreshold: 20, padBrightness: 65,
     controllerScene: "duo", controllerVariants: { duo: "double-welcome", gauge: "tip", connect: "welcome", low: "beacon", charging: "breath" },
     padHealthy: "#00b42d", padMedium: "#e66e00", padLow: "#dc0c18", padCharge: "#0091dc",
+    weatherCondition: "clear_day", weatherVariants: { clear_day: 0, clear_night: 0, rain: 0, cloud: 1, breaks: 0, breaks_night: 0, snow: 1, storm: 0 },
+    weatherWhere: "off", weatherTopbar: false, weatherUnit: "celsius", weatherBrightness: 70, weatherCutoff: 0, weatherStart: 0,
     extraDark: 2, reversePhysical: true, overlay: null,
   };
 }
 let state = defaultState();
 let eventFrames = {};
+let weatherFrames = null;
 let clock = 0;
 let lastRealTime = performance.now();
 let artworkLoadToken = 0;
@@ -236,6 +250,17 @@ function controllerFrame() {
   const charging = state.padCharging && state.chargeMode !== "off" && activePercent < 100;
   return { logical: frame, physical: frame, name: charging ? "Controller charging" : state.padCount === 2 ? "Two mirrored controllers" : "Controller battery", readout: `P1 ${state.padOne}%${second}${charging ? " · charging" : ""}`, explain: state.padCount === 2 ? "Eight LEDs per player, mirrored towards a dark centre. White tips mark each reported charge level." : "The lit length reflects the reported battery. A white tip can mark its exact end.", badge: "CONTROLLERS" };
 }
+function weatherFrame() {
+  const variant = state.weatherVariants[state.weatherCondition];
+  const loop = weatherFrames?.frames?.[state.weatherCondition]?.[variant];
+  const elapsed = Math.max(0, clock - state.weatherStart) / 1000;
+  const raw = loop?.[Math.floor(elapsed * weatherFrames.fps) % loop.length] || blank();
+  const frame = raw.map((pixel) => {
+    const scaled = scale(pixel, state.weatherBrightness / 100);
+    return Math.max(...scaled) <= state.weatherCutoff ? [...OFF] : scaled;
+  });
+  return { logical: frame, physical: frame, name: `${state.weatherCondition.replaceAll("_", " ")} · ${WEATHER_OPTIONS[state.weatherCondition][variant]}`, readout: `${state.weatherUnit === "fahrenheit" ? "64°F" : "18°C"} · sample sky`, explain: "An eight-second weather loop repeats on the light bar. The exact temperature is text only, never encoded as LED colours.", badge: "WEATHER" };
+}
 function controllerPreviewFrame(overlay) {
   const t = (clock - overlay.start) / 1000;
   const variant = overlay.variant;
@@ -308,6 +333,7 @@ function getCurrentOutput() {
   const chargeContext = state.chargeMode === "continuous-everywhere" || (state.chargeMode === "continuous-home" && state.context === "home");
   const persistentContext = activeContext(state.controllerWhere);
   if ((state.padCharging && chargeContext && (state.padCount === 2 ? state.padTwo : state.padOne) < 100) || persistentContext) return controllerFrame();
+  if (state.weatherWhere === "everywhere" || state.weatherWhere === state.context) return weatherFrame();
   let output;
   if (state.display === "performance" && (state.context === "game" || state.perfHome)) output = performanceFrames();
   else if (state.display === "artwork" && state.context === "game") output = artworkFrame();
@@ -481,7 +507,8 @@ function setTab(tab, configure = true) {
     if (tab === "artwork") { state.display = state.gameSettings[state.game].display === "performance" ? "performance" : "artwork"; state.context = "game"; state.timerRunning = false; }
     if (tab === "performance") { state.display = "performance"; state.context = "game"; state.timerRunning = false; }
     if (tab === "playtime") { state.display = "performance"; state.context = "game"; state.timerRunning = true; }
-    if (tab === "controllers") { state.display = "performance"; state.context = "home"; state.timerRunning = false; state.padCharging = false; $("#padCharging").checked = false; }
+    if (tab === "controllers") { state.display = "performance"; state.context = "home"; state.timerRunning = false; state.padCharging = false; state.weatherWhere = "off"; $("#weatherWhere").value = "off"; $("#padCharging").checked = false; }
+    if (tab === "weather") { state.display = "performance"; state.context = "home"; state.timerRunning = false; state.padCharging = false; state.controllerWhere = "off"; state.weatherWhere = "home"; state.weatherStart = clock; $("#controllerWhere").value = "off"; $("#weatherWhere").value = "home"; $("#padCharging").checked = false; }
     if (tab === "events") { state.display = "performance"; state.context = "game"; state.timerRunning = false; playEvent(); }
     $("#contextChoice").value = state.context;
     $("#displayChoice").value = state.display;
@@ -493,6 +520,7 @@ function choosePreset(preset) {
   if (preset === "performance") setTab("performance");
   if (preset === "playtime") setTab("playtime");
   if (preset === "controllers") setTab("controllers");
+  if (preset === "weather") setTab("weather");
   if (preset === "notification" || preset === "achievement") {
     state.eventKind = preset;
     setTab("events", false);
@@ -527,13 +555,20 @@ function syncControllerUI() {
   $("#padTwo").disabled = state.padCount !== 2;
   $("#padCharging").parentElement.lastChild.textContent = state.padCount === 2 ? " Controller 2 charging" : " Controller charging";
 }
+function syncWeatherUI() {
+  const choices = WEATHER_OPTIONS[state.weatherCondition];
+  $("#weatherVariant").replaceChildren(...choices.map((label, index) => new Option(label, String(index))));
+  $("#weatherVariant").value = String(state.weatherVariants[state.weatherCondition]);
+  const degrees = state.weatherUnit === "fahrenheit" ? "64°F" : "18°C";
+  $("#weatherTopbarSample").textContent = `Top-bar example: ${WEATHER_ICONS[state.weatherCondition]} ${degrees} · ${state.weatherTopbar ? "enabled" : "optional"} beside the clock. The real plugin needs a chosen city; this demo uses sample data only.`;
+}
 function playController() {
   state.timerRunning = false;
   const kind = state.controllerScene;
   state.overlay = { type: "controller", kind, variant: state.controllerVariants[kind], start: clock, duration: kind === "duo" ? 5.6 : kind === "gauge" ? 3 : 3.2 };
 }
 function updateOutputs() {
-  const outputs = { artRow: `${getSampleRow()}%`, cpuLoad: `${state.cpu}%`, cpuTemp: `${state.cpuTemp}°C`, gpuLoad: `${state.gpu}%`, gpuTemp: `${state.gpuTemp}°C`, coolTemp: `${state.coolTemp}°C`, hotTemp: `${state.hotTemp}°C`, timerRemaining: formatTime(state.timerRemaining), padOne: `${state.padOne}%`, padTwo: `${state.padTwo}%`, lowThreshold: `${state.lowThreshold}%`, padBrightness: `${state.padBrightness}%`, extraDark: String(state.extraDark) };
+  const outputs = { artRow: `${getSampleRow()}%`, cpuLoad: `${state.cpu}%`, cpuTemp: `${state.cpuTemp}°C`, gpuLoad: `${state.gpu}%`, gpuTemp: `${state.gpuTemp}°C`, coolTemp: `${state.coolTemp}°C`, hotTemp: `${state.hotTemp}°C`, timerRemaining: formatTime(state.timerRemaining), padOne: `${state.padOne}%`, padTwo: `${state.padTwo}%`, lowThreshold: `${state.lowThreshold}%`, padBrightness: `${state.padBrightness}%`, weatherBrightness: `${state.weatherBrightness}%`, weatherCutoff: String(state.weatherCutoff), extraDark: String(state.extraDark) };
   Object.entries(outputs).forEach(([key, value]) => { const element = $(`#${key}Value`); if (element) element.textContent = value; });
 }
 function bindValue(id, stateKey, transform = (value) => value, callback) {
@@ -601,11 +636,20 @@ function bindControls() {
   $("#recordToggle").addEventListener("click", () => { state.recording = !state.recording; playEvent(state.recording ? "record-start" : "record-stop"); syncEventUI(); });
   $("#recordIsolation").addEventListener("change", (event) => { state.recordIsolation = event.target.checked; });
   for (const [id, key] of [["controllerCount", "padCount"], ["padOne", "padOne"], ["padTwo", "padTwo"], ["lowThreshold", "lowThreshold"], ["padBrightness", "padBrightness"]]) bindValue(id, key, Number, id === "controllerCount" ? syncControllerUI : undefined);
-  for (const [id, key] of [["controllerWhere", "controllerWhere"], ["chargeMode", "chargeMode"], ["alertWhere", "alertWhere"], ["padHealthy", "padHealthy"], ["padMedium", "padMedium"], ["padLow", "padLow"], ["padCharge", "padCharge"]]) bindValue(id, key);
+  bindValue("controllerWhere", "controllerWhere", String, () => { if (state.controllerWhere !== "off") { state.weatherWhere = "off"; $("#weatherWhere").value = "off"; } });
+  for (const [id, key] of [["chargeMode", "chargeMode"], ["alertWhere", "alertWhere"], ["padHealthy", "padHealthy"], ["padMedium", "padMedium"], ["padLow", "padLow"], ["padCharge", "padCharge"]]) bindValue(id, key);
   $("#controllerScene").addEventListener("change", (event) => { state.controllerScene = event.target.value; syncControllerUI(); playController(); });
   $("#controllerVariant").addEventListener("change", (event) => { state.controllerVariants[state.controllerScene] = event.target.value; playController(); });
   $("#controllerPlay").addEventListener("click", playController);
   $("#padCharging").addEventListener("change", (event) => { state.padCharging = event.target.checked; });
+  $("#weatherCondition").addEventListener("change", (event) => { state.weatherCondition = event.target.value; state.weatherStart = clock; syncWeatherUI(); });
+  $("#weatherVariant").addEventListener("change", (event) => { state.weatherVariants[state.weatherCondition] = Number(event.target.value); state.weatherStart = clock; });
+  $("#weatherWhere").addEventListener("change", (event) => { state.weatherWhere = event.target.value; if (state.weatherWhere !== "off") { state.controllerWhere = "off"; $("#controllerWhere").value = "off"; } });
+  $("#weatherTopbar").addEventListener("change", (event) => { state.weatherTopbar = event.target.checked; syncWeatherUI(); });
+  $("#weatherUnit").addEventListener("change", (event) => { state.weatherUnit = event.target.value; syncWeatherUI(); });
+  bindValue("weatherBrightness", "weatherBrightness", Number);
+  bindValue("weatherCutoff", "weatherCutoff", Number);
+  $("#weatherReplay").addEventListener("click", () => { state.weatherStart = clock; });
   bindValue("contextChoice", "context"); bindValue("displayChoice", "display"); bindValue("extraDark", "extraDark", Number);
   $("#reversePhysical").addEventListener("change", (event) => { state.reversePhysical = event.target.checked; });
   $("#contextSwitch").addEventListener("click", () => { state.context = state.context === "home" ? "game" : "home"; $("#contextChoice").value = state.context; });
@@ -616,7 +660,7 @@ function bindControls() {
   });
   $("#resetDemo").addEventListener("click", resetDemo);
   $("#pauseDemo").addEventListener("click", () => { state.paused = !state.paused; $("#pauseDemo").textContent = state.paused ? "▶" : "Ⅱ"; $("#pauseDemo").setAttribute("aria-label", state.paused ? "Play animation" : "Pause animation"); });
-  $("#resetView").addEventListener("click", () => { if (state.overlay) state.overlay.start = clock; else if (state.tab === "events") playEvent(); else if (state.tab === "controllers") playController(); else state.timerElapsed = 0; });
+  $("#resetView").addEventListener("click", () => { if (state.overlay) state.overlay.start = clock; else if (state.tab === "events") playEvent(); else if (state.tab === "controllers") playController(); else if (state.tab === "weather") state.weatherStart = clock; else state.timerElapsed = 0; });
   window.addEventListener("resize", () => { updateSampleLine(); updateMobilePreviewVisibility(); });
   window.addEventListener("scroll", updateMobilePreviewVisibility, { passive: true });
 }
@@ -624,23 +668,25 @@ function resetDemo() {
   state = defaultState();
   clock = 0;
   if (customObjectUrl) { URL.revokeObjectURL(customObjectUrl); customObjectUrl = null; }
-  for (const [id, value] of Object.entries({ artSource: state.artSource, artMode: state.artMode, artRow: state.artRow, gameDisplay: "inherit", perfMetric: state.metric, perfDirection: state.direction, cpuLoad: state.cpu, cpuTemp: state.cpuTemp, gpuLoad: state.gpu, gpuTemp: state.gpuTemp, perfPalette: state.palette, perfResponse: state.response, coolColor: state.coolColor, middleColor: state.middleColor, hotColor: state.hotColor, coolTemp: state.coolTemp, hotTemp: state.hotTemp, timerDuration: state.timerDuration, timerScale: state.timerScale, timerRemaining: state.timerRemaining, timerColor: state.timerColor, timerSpeed: state.timerSpeed, controllerCount: state.padCount, padOne: state.padOne, padTwo: state.padTwo, controllerWhere: state.controllerWhere, chargeMode: state.chargeMode, alertWhere: state.alertWhere, lowThreshold: state.lowThreshold, padBrightness: state.padBrightness, padHealthy: state.padHealthy, padMedium: state.padMedium, padLow: state.padLow, padCharge: state.padCharge, extraDark: state.extraDark, contextChoice: state.context, displayChoice: state.display })) { const element = $(`#${id}`); if (element) element.value = String(value); }
+  for (const [id, value] of Object.entries({ artSource: state.artSource, artMode: state.artMode, artRow: state.artRow, gameDisplay: "inherit", perfMetric: state.metric, perfDirection: state.direction, cpuLoad: state.cpu, cpuTemp: state.cpuTemp, gpuLoad: state.gpu, gpuTemp: state.gpuTemp, perfPalette: state.palette, perfResponse: state.response, coolColor: state.coolColor, middleColor: state.middleColor, hotColor: state.hotColor, coolTemp: state.coolTemp, hotTemp: state.hotTemp, timerDuration: state.timerDuration, timerScale: state.timerScale, timerRemaining: state.timerRemaining, timerColor: state.timerColor, timerSpeed: state.timerSpeed, controllerCount: state.padCount, padOne: state.padOne, padTwo: state.padTwo, controllerWhere: state.controllerWhere, chargeMode: state.chargeMode, alertWhere: state.alertWhere, lowThreshold: state.lowThreshold, padBrightness: state.padBrightness, padHealthy: state.padHealthy, padMedium: state.padMedium, padLow: state.padLow, padCharge: state.padCharge, weatherCondition: state.weatherCondition, weatherWhere: state.weatherWhere, weatherUnit: state.weatherUnit, weatherBrightness: state.weatherBrightness, weatherCutoff: state.weatherCutoff, extraDark: state.extraDark, contextChoice: state.context, displayChoice: state.display })) { const element = $(`#${id}`); if (element) element.value = String(value); }
   $("#timerRemaining").max = String(state.timerDuration * 60);
-  for (const [id, checked] of Object.entries({ perfHome: state.perfHome, recordIsolation: state.recordIsolation, padCharging: state.padCharging, reversePhysical: state.reversePhysical })) $(`#${id}`).checked = checked;
+  for (const [id, checked] of Object.entries({ perfHome: state.perfHome, recordIsolation: state.recordIsolation, padCharging: state.padCharging, weatherTopbar: state.weatherTopbar, reversePhysical: state.reversePhysical })) $(`#${id}`).checked = checked;
   $$("[data-game]").forEach((button) => button.classList.toggle("selected", button.dataset.game === state.game));
   $$("[data-timer-source]").forEach((button) => button.classList.toggle("selected", button.dataset.timerSource === state.timerSource));
   $("#padCharging").checked = false;
   $("#customColours").hidden = true;
   $("#artRow").disabled = false;
   $("#pauseDemo").textContent = "Ⅱ";
-  syncEventUI(); syncControllerUI(); updateOutputs(); loadArtwork(); setTab("overview", false);
+  syncEventUI(); syncControllerUI(); syncWeatherUI(); updateOutputs(); loadArtwork(); setTab("overview", false);
 }
 async function init() {
   bindControls();
-  syncEventUI(); syncControllerUI(); updateOutputs(); loadArtwork();
+  syncEventUI(); syncControllerUI(); syncWeatherUI(); updateOutputs(); loadArtwork();
   updateMobilePreviewVisibility();
   try { const response = await fetch("event-frames.json"); if (response.ok) eventFrames = await response.json(); }
   catch { /* The base modes still work if event data is unavailable. */ }
+  try { const response = await fetch("weather-frames.json"); if (response.ok) weatherFrames = await response.json(); }
+  catch { /* Other simulations still work without weather frames. */ }
   requestAnimationFrame(tick);
 }
 init();
